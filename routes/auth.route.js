@@ -5,6 +5,16 @@ const passport = require('passport');
 const { ensureLoggedOut, ensureLoggedIn } = require('connect-ensure-login');
 const { registerValidator } = require('../utils/validators');
 
+// Middleware to check if the user is an admin
+function ensureAdmin(req, res, next) {
+  if (req.isAuthenticated() && req.user.role === 'ADMIN') {
+    return next();
+  }
+  req.flash('error', 'You do not have permission to access this page.');
+  return res.redirect('/');
+}
+
+// Login route (GET)
 router.get(
   '/login',
   ensureLoggedOut({ redirectTo: '/' }),
@@ -13,28 +23,32 @@ router.get(
   }
 );
 
+// Login form submission (POST)
 router.post(
   '/login',
   ensureLoggedOut({ redirectTo: '/' }),
   passport.authenticate('local', {
-    // successRedirect: '/',
     successReturnToOrRedirect: '/',
     failureRedirect: '/auth/login',
     failureFlash: true,
   })
 );
 
+// Register route (GET) - Only Admins can access
 router.get(
   '/register',
-  ensureLoggedOut({ redirectTo: '/' }),
+  ensureLoggedIn({ redirectTo: '/auth/login' }), // Ensure the user is logged in
+  ensureAdmin, // Ensure the user is an admin
   async (req, res, next) => {
     res.render('register');
   }
 );
 
+// Register form submission (POST) - Only Admins can register users
 router.post(
   '/register',
-  ensureLoggedOut({ redirectTo: '/' }),
+  ensureLoggedIn({ redirectTo: '/auth/login' }), // Ensure the user is logged in
+  ensureAdmin, // Ensure the user is an admin
   registerValidator,
   async (req, res, next) => {
     try {
@@ -43,26 +57,22 @@ router.post(
         errors.array().forEach((error) => {
           req.flash('error', error.msg);
         });
-        res.render('register', {
+        return res.render('register', {
           email: req.body.email,
           messages: req.flash(),
         });
-        return;
       }
 
       const { email } = req.body;
       const doesExist = await User.findOne({ email });
       if (doesExist) {
         req.flash('warning', 'Username/email already exists');
-        res.redirect('/auth/register');
-        return;
+        return res.redirect('/auth/register');
       }
+
       const user = new User(req.body);
       await user.save();
-      req.flash(
-        'success',
-        `${user.email} registered succesfully, you can now login`
-      );
+      req.flash('success', `${user.email} registered successfully, you can now login`);
       res.redirect('/auth/login');
     } catch (error) {
       next(error);
@@ -70,6 +80,7 @@ router.post(
   }
 );
 
+// Logout route (GET) - No changes made here
 router.get(
   '/logout',
   ensureLoggedIn({ redirectTo: '/' }),
@@ -80,19 +91,3 @@ router.get(
 );
 
 module.exports = router;
-
-// function ensureAuthenticated(req, res, next) {
-//   if (req.isAuthenticated()) {
-//     next();
-//   } else {
-//     res.redirect('/auth/login');
-//   }
-// }
-
-// function ensureNOTAuthenticated(req, res, next) {
-//   if (req.isAuthenticated()) {
-//     res.redirect('back');
-//   } else {
-//     next();
-//   }
-// }

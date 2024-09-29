@@ -1,15 +1,15 @@
 <nav>
-  <h2>RBAC</h2>
+  <h2>E-M-S</h2>
   <ul>
     <li><a href="/">Home</a></li>
     <% if (user) { %>
     <li><a href="/user/profile">Profile</a></li>
     <% if (user.role === 'ADMIN') { %>
     <li><a href="/admin/users">Manage Users</a></li>
+    <li><a href="/auth/register">Register User</a></li> <!-- Only visible to admins -->
     <% } %>
     <li><a href="/auth/logout">Logout</a></li>
     <% } else { %>
-    <li><a href="/auth/register">Register</a></li>
     <li><a href="/auth/login">Login</a></li>
     <% } %>
   </ul>
